@@ -1,0 +1,204 @@
+/* Copyright 2026 OpenAndroidAssistant contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+syntax = "proto3";
+
+package org.openandroidassistant.proto;
+
+option java_package = "org.openandroidassistant.proto";
+option java_multiple_files = true;
+
+// Zero values always mean "the default", resolved in SettingsRepository's effective* accessors.
+
+enum ModelProvider {
+  // Default: OpenRouter.
+  PROVIDER_UNSPECIFIED = 0;
+  PROVIDER_LOCAL = 1;
+  PROVIDER_OPENROUTER = 2;
+  PROVIDER_OPENAI = 3;
+  // GPT-Live over the OpenAI API (realtime harness).
+  PROVIDER_OPENAI_REALTIME = 4;
+}
+
+enum WebSearchMode {
+  // Default: native when the provider has it, else off.
+  WEB_SEARCH_UNSPECIFIED = 0;
+  WEB_SEARCH_OFF = 1;
+  WEB_SEARCH_NATIVE = 2;
+  WEB_SEARCH_SEARXNG = 3;
+  // Tavily with the user's key (free plan: 1,000 searches a month, no card).
+  WEB_SEARCH_TAVILY = 4;
+}
+
+enum ReadPageProvider {
+  // Default: Jina Reader.
+  READ_PAGE_UNSPECIFIED = 0;
+  READ_PAGE_JINA = 1;
+  READ_PAGE_FIRECRAWL = 2;
+}
+
+enum PlacesProvider {
+  // Default: OpenStreetMap.
+  PLACES_UNSPECIFIED = 0;
+  PLACES_OSM = 1;
+  PLACES_GOOGLE = 2;
+}
+
+enum LocationMode {
+  // Default: device location.
+  LOCATION_UNSPECIFIED = 0;
+  LOCATION_DEVICE = 1;
+  LOCATION_HOME = 2;
+  LOCATION_OFF = 3;
+}
+
+enum UnitSystem {
+  // Default: follow the phone's region.
+  UNITS_UNSPECIFIED = 0;
+  UNITS_METRIC = 1;
+  UNITS_IMPERIAL = 2;
+}
+
+enum MessageWording {
+  // Default: light cleanup.
+  WORDING_UNSPECIFIED = 0;
+  WORDING_EXACT = 1;
+  WORDING_LIGHT_CLEANUP = 2;
+  WORDING_NATURAL = 3;
+}
+
+enum PhoneNumberSpeech {
+  // Default: speak the digits.
+  PHONE_NUMBERS_UNSPECIFIED = 0;
+  PHONE_NUMBERS_SPEAK = 1;
+  PHONE_NUMBERS_SHOW_ONLY = 2;
+}
+
+enum ApprovalOverride {
+  // The tool's own default.
+  APPROVAL_DEFAULT = 0;
+  APPROVAL_NONE = 1;
+  APPROVAL_LOW = 2;
+  APPROVAL_HIGH = 3;
+  APPROVAL_CRITICAL = 4;
+}
+
+// What history keeps. The zero value is the default.
+enum HistoryMode {
+  HISTORY_TEXT_AND_VOICE = 0;
+  HISTORY_TEXT_ONLY = 1;
+  HISTORY_OFF = 2;
+}
+
+enum TtsProviderType {
+  // Default: Android's text-to-speech engine.
+  TTS_PROVIDER_UNSPECIFIED = 0;
+  TTS_PROVIDER_ANDROID = 1;
+  TTS_PROVIDER_KITTEN_NANO = 2;
+}
+
+// Per-tool user preferences, keyed by tool id in AssistantSettings.tool_prefs.
+message ToolPrefs {
+  // "Not allowed": hidden from the model, which is told it's turned off.
+  bool disabled = 1;
+  ApprovalOverride approval = 2;
+  // Whether the tool may run while the phone is locked. Unset: the tool's default.
+  oneof locked_override { bool allowed_when_locked = 3; }
+}
+
+message AssistantSettings {
+  // ---------------------------------------------------------------- app
+  // 1: theme override, 2: onboarding complete. Neither was ever used.
+  reserved 1, 2;
+  // Capability ids that have been through an Android permission request.
+  repeated string requested_capability_ids = 3;
+
+  // ---------------------------------------------------------------- model
+  ModelProvider provider = 10;
+  // Empty: google/gemini-3.8-flash.
+  string openrouter_model = 11;
+  // Empty: high.
+  string openrouter_reasoning = 12;
+  WebSearchMode openrouter_web_search = 13;
+  // Empty: gpt-6.1-sol.
+  string openai_model = 14;
+  // Empty: low.
+  string openai_reasoning = 15;
+  WebSearchMode openai_web_search = 16;
+  // GPT-Live backend model. Empty: gpt-6.1-sol.
+  string realtime_backend_model = 17;
+  // Empty: low.
+  string realtime_backend_reasoning = 18;
+  // Seconds of quiet after GPT-Live stops speaking before the app closes the session. 0: 4.
+  int32 realtime_close_after_seconds = 19;
+  WebSearchMode local_web_search = 20;
+  // Use the installed local model when the cloud can't be reached.
+  bool local_fallback_enabled = 21;
+  bool load_model_on_boot = 22;
+  // Local model import escape hatch. Empty means the built-in model.
+  string imported_model_path = 23;
+  // Cached OpenRouter facts about openrouter_model, refreshed when the model changes.
+  bool openrouter_model_accepts_audio = 24;
+  bool openrouter_model_native_search = 25;
+  string openrouter_model_name = 26;
+  bool openrouter_model_info_cached = 27;
+  // On-device model id (LocalModel). Empty: Gemma 4 E2B.
+  string local_model = 28;
+
+  // ---------------------------------------------------------------- web and places
+  string searxng_url = 30;
+  ReadPageProvider read_page_provider = 31;
+  // Self-hosted Firecrawl base URL. Empty with a key: Firecrawl cloud.
+  string firecrawl_url = 32;
+  PlacesProvider places_provider = 33;
+  // Nominatim base URL for OpenStreetMap places. Empty: nominatim.openstreetmap.org.
+  string nominatim_url = 34;
+  // Jina Reader base URL. Empty: r.jina.ai.
+  string jina_url = 35;
+
+  // ---------------------------------------------------------------- conversations
+  // Minutes after a conversation ends during which a new request continues it. 0: 5.
+  int32 continue_within_minutes = 40;
+  // 41: history on or off, before recordings could be left out.
+  reserved 41;
+  HistoryMode history = 49;
+
+  // ---------------------------------------------------------------- about you
+  string about_name = 50;
+  string about_home = 51;
+  string about_work = 52;
+  // Free text: relationships ("my wife is Jane"), language, anything else.
+  string about_notes = 53;
+  UnitSystem units = 54;
+  LocationMode location_mode = 55;
+  // Geocoded about_home, for the home location setting.
+  double home_latitude = 56;
+  double home_longitude = 57;
+  string home_geocoded_from = 58;
+
+  // ---------------------------------------------------------------- behavior preferences
+  MessageWording message_wording = 60;
+  PhoneNumberSpeech phone_numbers = 61;
+
+  // ---------------------------------------------------------------- tools
+  map<string, ToolPrefs> tool_prefs = 70;
+
+  // ---------------------------------------------------------------- speech
+  // 80, 81: the speech-to-text engine and language, before there was one recognizer.
+  reserved 80, 81;
+  TtsProviderType tts_provider = 82;
+  // BCP-47 tag for Android text-to-speech. Empty: system default.
+  string tts_language = 83;
+  // Android text-to-speech engine package. Empty: system default.
+  string tts_engine = 84;
+  // 0: 1.5x.
+  float tts_playback_speed = 85;
+  // KittenTTS voice name. Empty: Hugo.
+  string kitten_tts_voice = 86;
+  // Inverted so the zero value keeps the reply lighting up in sync with speech.
+  bool speech_highlighting_disabled = 87;
+
+  // ---------------------------------------------------------------- wake word
+  bool librewakeword_linked = 90;
+}

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+ Copyright 2026 OpenAndroidAssistant contributors
+ SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+<resources xmlns:tools="http://schemas.android.com/tools">
+  <style name="Theme.Oaa" parent="android:Theme.Material.Light.NoActionBar" />
+
+  <!-- Translucent theme for the assistant overlay and above-keyguard activities. -->
+  <style name="Theme.Oaa.Overlay" parent="android:Theme.Material.Light.NoActionBar">
+    <item name="android:windowIsTranslucent">true</item>
+    <item name="android:windowBackground">@android:color/transparent</item>
+    <item name="android:windowContentOverlay">@null</item>
+    <item name="android:windowNoTitle">true</item>
+    <item name="android:windowAnimationStyle">@null</item>
+    <item name="android:backgroundDimEnabled">false</item>
+  </style>
+</resources>

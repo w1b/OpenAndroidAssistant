@@ -1,0 +1,41 @@
+# Gradle
+.gradle/
+build/
+*/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Android / IDE
+local.properties
+*.iml
+.idea/
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Build outputs
+*.apk
+*.aab
+*.ap_
+*.dex
+release/
+
+# Downloaded model artifacts (never committed; fetched at runtime)
+*.litertlm
+*.task
+
+# Local voice benchmark recordings (may contain personal speech)
+prompt-samples/
+
+# Keystores / secrets
+*.jks
+*.keystore
+
+# Python
+__pycache__/
+
+# Scenario bench (local only: fake phone data from real contacts)
+app/src/test/java/org/openandroidassistant/bench/
+
+# Internal design notes (local only)
+ACTUAL_SYSTEM_DESIGN.md

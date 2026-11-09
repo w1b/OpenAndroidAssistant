@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+ Copyright 2026 OpenAndroidAssistant contributors
+ SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+<resources>
+  <!-- Dark window background so a dark-mode launch doesn't flash white before Compose draws. -->
+  <style name="Theme.Oaa" parent="android:Theme.Material.NoActionBar" />
+</resources>

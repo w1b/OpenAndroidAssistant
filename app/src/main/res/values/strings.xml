@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+ Copyright 2026 OpenAndroidAssistant contributors
+ SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+<resources>
+  <string name="app_name" translatable="false">OpenAndroidAssistant</string>
+</resources>

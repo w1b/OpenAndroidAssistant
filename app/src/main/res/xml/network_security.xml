@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+ Copyright 2026 OpenAndroidAssistant contributors
+ SPDX-License-Identifier: AGPL-3.0-or-later
+
+ HTTPS only. Plain HTTP is allowed to the phone itself, for an instance running on it (in Termux,
+ say): that traffic never leaves the device.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>
