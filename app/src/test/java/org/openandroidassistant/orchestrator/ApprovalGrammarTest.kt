@@ -8,12 +8,15 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.openandroidassistant.orchestrator.ApprovalGrammar.Verdict
 
+/** Enough detected speech for a real answer. */
+private const val VOICED = 400L
+
 class ApprovalGrammarTest {
   /** Feeds (transcript, silenceMs) once every 20 ms and returns the first final verdict. */
   private fun decide(vararg steps: Pair<String, Long>): Verdict {
     val g = ApprovalGrammar()
     for ((text, silence) in steps) {
-      val v = g.update(text, silence)
+      val v = g.update(text, silence, VOICED)
       if (v != Verdict.UNDECIDED) return v
     }
     return Verdict.UNDECIDED
@@ -61,26 +64,37 @@ class ApprovalGrammarTest {
   fun fillersAreNoAnswer() {
     // Faint noise and prompt echo came out as "Uh" or "Mm." and declined on their own.
     val g = ApprovalGrammar()
-    assertEquals(ApprovalGrammar.Verdict.UNDECIDED, g.update("Uh", 0))
-    assertEquals(ApprovalGrammar.Verdict.UNDECIDED, g.update("Mm.", 0))
-    assertEquals(ApprovalGrammar.Verdict.APPROVE, g.update("Uh, yes", 700))
-    assertEquals(ApprovalGrammar.Verdict.DECLINE, ApprovalGrammar().let { it.update("oh no", 0); it.update("oh no", 520) })
+    assertEquals(ApprovalGrammar.Verdict.UNDECIDED, g.update("Uh", 0, VOICED))
+    assertEquals(ApprovalGrammar.Verdict.UNDECIDED, g.update("Mm.", 0, VOICED))
+    assertEquals(ApprovalGrammar.Verdict.APPROVE, g.update("Uh, yes", 700, VOICED))
+    assertEquals(ApprovalGrammar.Verdict.DECLINE, ApprovalGrammar().let { it.update("oh no", 0, VOICED); it.update("oh no", 520, VOICED) })
   }
 
   @Test
   fun halfAWordIsNotADecline() {
     // Parakeet re-decodes mid-word: "Sen" on the way to "Send it", "Yes, ye" on the way to "yes, yes".
     val send = ApprovalGrammar()
-    assertEquals(ApprovalGrammar.Verdict.UNDECIDED, send.update("Sen", 0))
-    assertEquals(ApprovalGrammar.Verdict.UNDECIDED, send.update("Sen", 0))
-    assertEquals(ApprovalGrammar.Verdict.APPROVE, send.update("Send it.", 700))
+    assertEquals(ApprovalGrammar.Verdict.UNDECIDED, send.update("Sen", 0, VOICED))
+    assertEquals(ApprovalGrammar.Verdict.UNDECIDED, send.update("Sen", 0, VOICED))
+    assertEquals(ApprovalGrammar.Verdict.APPROVE, send.update("Send it.", 700, VOICED))
     val repeat = ApprovalGrammar()
-    assertEquals(ApprovalGrammar.Verdict.UNDECIDED, repeat.update("Yes, ye", 0))
-    assertEquals(ApprovalGrammar.Verdict.UNDECIDED, repeat.update("Yes, ye", 0))
-    assertEquals(ApprovalGrammar.Verdict.APPROVE, repeat.update("Yes, yes, yes.", 700))
+    assertEquals(ApprovalGrammar.Verdict.UNDECIDED, repeat.update("Yes, ye", 0, VOICED))
+    assertEquals(ApprovalGrammar.Verdict.UNDECIDED, repeat.update("Yes, ye", 0, VOICED))
+    assertEquals(ApprovalGrammar.Verdict.APPROVE, repeat.update("Yes, yes, yes.", 700, VOICED))
     // A real non-affirmative still declines.
     val no = ApprovalGrammar()
-    assertEquals(ApprovalGrammar.Verdict.UNDECIDED, no.update("No, make", 0))
-    assertEquals(ApprovalGrammar.Verdict.DECLINE, no.update("No, make it 1pm.", 520))
+    assertEquals(ApprovalGrammar.Verdict.UNDECIDED, no.update("No, make", 0, VOICED))
+    assertEquals(ApprovalGrammar.Verdict.DECLINE, no.update("No, make it 1pm.", 520, VOICED))
+  }
+
+  @Test
+  fun wordsWithNoVoiceNeverApprove() {
+    // The prompt's echo came out as "Yeah." with zero speech frames and sent a text by itself.
+    val phantom = ApprovalGrammar()
+    repeat(100) { i -> assertEquals(Verdict.UNDECIDED, phantom.update("Yeah.", i * 20L, speechMs = 0)) }
+    // A blip under the minimum isn't an answer either.
+    assertEquals(Verdict.UNDECIDED, ApprovalGrammar().update("Yes.", 2_000, speechMs = 40))
+    // Real speech still approves.
+    assertEquals(Verdict.APPROVE, ApprovalGrammar().update("Yes.", 700, speechMs = 300))
   }
 }

@@ -7,14 +7,23 @@ package org.openandroidassistant.orchestrator
 /**
  * The strict yes/no rule for voice approval. A wrong approval sends the wrong
  * thing and a wrong decline only costs a retry, so it's deliberately lopsided:
- * - approve only on a clean affirmative followed by [silenceToApproveMs] of silence;
+ * - approve only on a clean affirmative, voiced for at least [minSpeechToApproveMs], followed by
+ *   [silenceToApproveMs] of silence;
  * - decline when the user pauses and their words aren't the start of an affirmative.
+ *
+ * The voice requirement exists because the recognizer can produce words from audio with no voice in
+ * it: the prompt's echo at the start of playback, before echo cancellation settles, came out as
+ * "Yeah." with zero speech frames and approved a text message on its own.
  *
  * Decided at a pause, not mid-word: the live transcript re-decodes the audio so far, and half a
  * word comes out as something else ("See you." for the start of "send it"). By [pauseToDeclineMs]
  * into a pause the whole answer has been decoded.
  */
-class ApprovalGrammar(private val silenceToApproveMs: Long = 600, private val pauseToDeclineMs: Long = 500) {
+class ApprovalGrammar(
+  private val silenceToApproveMs: Long = 600,
+  private val pauseToDeclineMs: Long = 500,
+  private val minSpeechToApproveMs: Long = 100,
+) {
 
   enum class Verdict {
     UNDECIDED,
@@ -23,10 +32,11 @@ class ApprovalGrammar(private val silenceToApproveMs: Long = 600, private val pa
   }
 
   /**
-   * Feeds the transcript so far and how long it has been silent since the last speech.
-   * Once it returns APPROVE or DECLINE, the decision is final.
+   * Feeds the transcript so far, how long it has been silent since the last speech, and how much
+   * speech the voice detector has heard in total ([speechMs]). Once it returns APPROVE or DECLINE,
+   * the decision is final.
    */
-  fun update(transcript: String, silenceMs: Long): Verdict {
+  fun update(transcript: String, silenceMs: Long, speechMs: Long): Verdict {
     val words = normalize(transcript).let { w ->
       // Repeating the last word, not finished yet ("yes ye"): the repeat.
       if (w.size >= 2 && w[w.size - 2].startsWith(w.last())) w.dropLast(1) else w
@@ -38,7 +48,8 @@ class ApprovalGrammar(private val silenceToApproveMs: Long = 600, private val pa
       return if (silenceMs >= pauseToDeclineMs) Verdict.DECLINE else Verdict.UNDECIDED
     }
     val complete = AFFIRMATIVES.any { it == words }
-    return if (complete && silenceMs >= silenceToApproveMs) Verdict.APPROVE else Verdict.UNDECIDED
+    // Words without a voice behind them are the recognizer's invention, not the user's yes.
+    return if (complete && speechMs >= minSpeechToApproveMs && silenceMs >= silenceToApproveMs) Verdict.APPROVE else Verdict.UNDECIDED
   }
 
   companion object {

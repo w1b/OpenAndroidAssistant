@@ -807,13 +807,15 @@ constructor(
           // Nothing decoded yet (the recognizer may still be loading): decode what's there now, so
           // a yes said over the prompt isn't thrown away with its echo.
           if (verdict == ApprovalGrammar.Verdict.UNDECIDED && !words(transcript)) transcript = stream.peek()
-          if (verdict == ApprovalGrammar.Verdict.UNDECIDED && (!words(transcript) || echo(transcript))) {
-            if (transcript.isNotBlank()) Log.i(TAG, "approval: prompt echo ignored: \"$transcript\"")
+          // Words with no voice detected behind them are echo or noise too ("Your" heard as "Yeah.").
+          if (verdict == ApprovalGrammar.Verdict.UNDECIDED && (!words(transcript) || echo(transcript) || speechFrames == 0)) {
+            if (transcript.isNotBlank()) Log.i(TAG, "approval: prompt echo ignored: \"$transcript\" speech_frames=$speechFrames")
             stream.close()
             stream = session.openStream()
             grammar = ApprovalGrammar()
             pcm.clear()
             heardSpeech = false
+            speechFrames = 0
             silenceMs = 0
             transcript = ""
           }
@@ -826,13 +828,14 @@ constructor(
         if (speaking) silenceMs = 0 else silenceMs += 20
         // Only words count as the user answering (noise comes out as "uh" or nothing), and they
         // arrive a moment after the voice: a short "yes" is over before its text is.
+        // The recognizer can make words out of echo or noise, so the voice detector must hear speech too.
         val heardEcho = promptPlaying && (!words(transcript) || echo(transcript))
-        if (!heardEcho && words(transcript)) heardSpeech = true
+        if (!heardEcho && words(transcript) && speechFrames > 0) heardSpeech = true
         when (verdict) {
           ApprovalGrammar.Verdict.UNDECIDED -> {
             if (heardEcho) return@listen false
-            verdict = grammar.update(transcript, if (heardSpeech) silenceMs else 0)
-            if (words(transcript) && !speech.isIdle) {
+            verdict = grammar.update(transcript, if (heardSpeech) silenceMs else 0, speechFrames * 20L)
+            if (heardSpeech && !speech.isIdle) {
               // The user is answering over the question: stop asking. A yes approves after the
               // usual silence; anything else declines at their pause.
               approvedOverPrompt = true
